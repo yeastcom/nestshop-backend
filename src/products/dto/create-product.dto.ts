@@ -38,6 +38,11 @@ export class CreateProductDto {
   @IsString()
   description?: string;
 
+  @ApiPropertyOptional({ example: 'Lekka koszulka do treningu.' })
+  @IsOptional()
+  @IsString()
+  shortDescription?: string;
+
   @ApiProperty({ example: '99.99', description: 'Cena jako string (decimal)' })
   @IsString()
   price: string;

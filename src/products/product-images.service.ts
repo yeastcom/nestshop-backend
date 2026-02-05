@@ -8,7 +8,7 @@ import { DataSource, Repository } from 'typeorm';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import sharp from 'sharp';
-
+import { promises as fs } from "node:fs"
 import { Product } from './entities/product.entity';
 import { ProductImage } from './entities/product-image.entity';
 
@@ -28,6 +28,11 @@ const IMAGE_SIZES: Array<{ type: Exclude<ImageType, 'original'>; w: number; h: n
     { type: 'home_default', w: 250, h: 250 },
     { type: 'large_default', w: 800, h: 800 },
   ];
+
+  const DELETE_TYPES: ImageType[] = [
+    "original",
+    ...IMAGE_SIZES.map((s) => s.type),
+  ]
 
 @Injectable()
 export class ProductImagesService {
@@ -148,5 +153,29 @@ export class ProductImagesService {
     });
 
     return { ok: true };
+  }
+
+  private imageDirById(imageId: number) {
+    // storage/img/p/1/6/4 dla id=164
+    return join(process.cwd(), "storage", "img", "p", ...String(imageId).split(""))
+  }
+
+  private imagePath(imageId: number, type: ImageType) {
+    return join(this.imageDirById(imageId), `${type}.jpg`)
+  }
+
+  async deleteImage(productId: number, imageId: number) {
+    const img = await this.imagesRepo.findOne({ where: { id: imageId, productId } })
+    if (!img) throw new NotFoundException("Image not found")
+
+    await this.imagesRepo.remove(img)
+
+    await Promise.allSettled(
+      DELETE_TYPES.map((type) => fs.unlink(this.imagePath(imageId, type))),
+    )
+
+    await fs.rmdir(this.imageDirById(imageId)).catch(() => undefined)
+
+    return { ok: true }
   }
 }

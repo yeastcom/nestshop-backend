@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { DataSource, Repository } from 'typeorm';
@@ -194,5 +194,24 @@ export class CustomersService {
 
   async findByEmailWithPassword(email: string) {
     return this.customersRepo.findOne({ where: { email } });
+  }
+
+  async validateLogin(email: string, password: string) {
+    const customer = await this.customersRepo.findOne({ where: { email } })
+    if (!customer) throw new UnauthorizedException("Invalid credentials")
+
+    const ok = await bcrypt.compare(password, customer.passwordHash)
+    if (!ok) throw new UnauthorizedException("Invalid credentials")
+
+    // safe (bez hasha)
+    const { passwordHash, ...safe } = customer as any
+    return safe
+  }
+
+  async findByIdSafe(id: number) {
+    const customer = await this.customersRepo.findOne({ where: { id }, relations: {addresses: true} })
+    if (!customer) return null
+    const { passwordHash, ...safe } = customer as any
+    return safe
   }
 }

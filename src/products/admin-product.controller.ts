@@ -6,7 +6,7 @@ import {
   Param,
   Patch,
   Post,
-  Query,
+  Put,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -63,7 +63,7 @@ export class AdminProductsController {
     return this.productsService.findOne(Number(id));
   }
 
-  @Patch(':id')
+  @Put(':id')
   @ApiBearerAuth()
   @ApiParam({ name: 'id', example: 12 })
   update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
@@ -110,6 +110,17 @@ export class AdminProductsController {
     @Param('imageId') imageId: string,
   ) {
     return this.imagesService.setCover(Number(productId), Number(imageId));
+  }
+
+  @Delete(':productId/images/:imageId')
+  @ApiParam({ name: 'productId', example: 12 })
+  @ApiParam({ name: 'imageId', example: 164 })
+  @HttpCode(204)
+  deleteImage(
+    @Param('productId') productId: string,
+    @Param('imageId') imageId: string,
+  ) {
+    return this.imagesService.deleteImage(Number(productId), Number(imageId));
   }
 
   @Post(':productId/categories')

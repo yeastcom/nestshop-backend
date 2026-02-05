@@ -8,12 +8,16 @@ import { IsNull, Repository } from 'typeorm';
 import { Category } from './entities/category.entity';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { Product } from 'src/products/entities/product.entity';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class CategoriesService {
   constructor(
     @InjectRepository(Category)
     private readonly categoriesRepo: Repository<Category>,
+    @InjectRepository(Product) private readonly productsRepo: Repository<Product>,
+    private config: ConfigService
   ) {}
 
   async create(dto: CreateCategoryDto): Promise<Category> {
@@ -120,5 +124,69 @@ export class CategoriesService {
       }));
 
     return build(null);
+  }
+
+
+  async getProductsByCategory(categoryId: number, opts: { page: number; limit: number }) {
+    const { page, limit } = opts
+    const skip = (page - 1) * limit
+
+    const category = await this.categoriesRepo.findOne({ where: { id: categoryId } })
+    if (!category) throw new NotFoundException("Category not found")
+      
+
+    // relacja many-to-many: product.categories
+    const [items, total] = await this.productsRepo
+    .createQueryBuilder("p")
+    .leftJoin("p.categories", "c")
+    .where("c.id = :categoryId", { categoryId })
+    .andWhere("p.isActive = :active", { active: true })
+    .leftJoinAndSelect("p.defaultCategory", "dc")
+    .leftJoinAndSelect("p.images", "img", "img.cover = :cover", { cover: true })
+    .orderBy("p.id", "DESC")
+    .skip(skip)
+    .take(limit)
+    .getManyAndCount()
+
+    const mapped = items.map((p) => {
+      const cover = p.images?.[0] // bo join zwróci max 1
+      return {
+        ...p,
+        images: cover
+          ? [
+              {
+                ...cover,
+                urls: this.imageUrls(cover.id),
+              },
+            ]
+          : [],
+      }
+    })
+
+    return {
+      items: mapped,
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    }
+  }
+
+  private imageSubPath(imageId: number) {
+    // np. 164 => "1/6/4"
+    return String(imageId).split("").join("/")
+  }
+
+  private imageUrls(imageId: number) {
+    const dir = `/media/img/p/${this.imageSubPath(imageId)}`
+
+    return {
+      original: `${dir}/original.jpg`,
+      cart_default: `${dir}/cart_default.jpg`,
+      small_default: `${dir}/small_default.jpg`,
+      medium_default: `${dir}/medium_default.jpg`,
+      home_default: `${dir}/home_default.jpg`,
+      large_default: `${dir}/large_default.jpg`,
+    }
   }
 }

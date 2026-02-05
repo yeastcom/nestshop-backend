@@ -32,23 +32,40 @@ async function bootstrap() {
     throw new Error("Missing SESSION_SECRET in env")
   }
 
-  app.use(
-    session({
-      name: "admin.sid",
-      secret: process.env.SESSION_SECRET,
-      resave: false,
-      saveUninitialized: false,
-      store: new RedisStore({ client: redisClient }),
-      cookie: {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: false, // PROD: true (HTTPS)
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-        path: "/",
-      },
-    }),
-  )
+const sessionMiddlewareAdmin = session({
+  name: "admin.sid",
+  secret: process.env.SESSION_SECRET!,
+  resave: false,
+  saveUninitialized: false,
+  store: new RedisStore({ client: redisClient }),
+  cookie: {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: false,
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+    path: "/", // <-- KLUCZ
+  },
+})
 
+const sessionMiddlewareCustomer = session({
+  name: "customer.sid",
+  secret: process.env.SESSION_SECRET!,
+  resave: false,
+  saveUninitialized: false,
+  store: new RedisStore({ client: redisClient }),
+  cookie: {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: false,
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+    path: "/", // <-- KLUCZ
+  },
+})
+
+// podpinamy middleware tylko na API (żeby nie działał globalnie),
+// ale cookie ma path "/" żeby Next middleware je widział
+app.use("/api/admin", sessionMiddlewareAdmin)
+app.use("/api", sessionMiddlewareCustomer)
   const config = new DocumentBuilder()
     .setTitle("NestShop API")
     .setDescription("API documentation")

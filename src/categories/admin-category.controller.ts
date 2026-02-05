@@ -33,37 +33,36 @@ export class AdminCategoryController {
 
 
   @Post()
-  @ApiBearerAuth()
   create(@Body() dto: CreateCategoryDto) {
     return this.categoriesService.create(dto);
   }
 
   @Get()
-  @ApiBearerAuth()
-  findAll() {
+  findRootCategory() {
     return this.categoriesService.findRootCategory();
   }
 
+  @Get('/all')
+  findAll() {
+    return this.categoriesService.findAll();
+  }
+
   @Get('tree')
-  @ApiBearerAuth()
   getTree() {
     return this.categoriesService.getTree();
   }
 
   @Get(':id')
-  @ApiBearerAuth()
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.categoriesService.findOne(id);
   }
 
   @Get(':id/children')
-  @ApiBearerAuth()
   findChildren(@Param('id', ParseIntPipe) id: number) {
     return this.categoriesService.findChildrenCategory(id);
   }
 
   @Put(':id')
-  @ApiBearerAuth()
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCategoryDto,

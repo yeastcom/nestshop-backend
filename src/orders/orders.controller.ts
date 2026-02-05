@@ -3,18 +3,16 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { CustomerJwtGuard } from 'src/customers/guards/customer-jwt.guard';
-
+import { CustomerAuthGuard } from 'src/customers/guards/customer-auth.guard';
 @ApiTags('orders')
 @ApiBearerAuth()
-@UseGuards(CustomerJwtGuard)
+@UseGuards(CustomerAuthGuard)
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
   @ApiBearerAuth()
-  @UseGuards(CustomerJwtGuard)
   create(@Req() req: Request, @Body() dto: CreateOrderDto) {
     const customerId = (req.user as any).id;
     return this.ordersService.createFromCart(customerId, dto);

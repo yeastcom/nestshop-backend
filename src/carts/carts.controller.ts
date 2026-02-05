@@ -5,7 +5,6 @@ import { CartsService } from './carts.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { UseGuards } from '@nestjs/common';
-import { OptionalCustomerJwtGuard } from '../customers/guards/optional-customer-jwt.guard';
 
 @ApiTags('cart')
 @Controller('cart')
@@ -25,8 +24,6 @@ export class CartsController {
 
   // GET /cart
   @Get()
-  @UseGuards(OptionalCustomerJwtGuard)
-  @ApiHeader({ name: 'X-Cart-Token', required: false })
   async getCart(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -34,7 +31,7 @@ export class CartsController {
   ) {
     const token = this.extractCartToken(req, xCartToken);
 
-    const customerId = (req.user as any)?.id ?? null;
+    const customerId = req.session.customerId ?? null
 
     const cart = await this.cartsService.getOrCreateCart(customerId, token);
 
@@ -51,7 +48,6 @@ export class CartsController {
 
   @Post('items')
   @ApiBearerAuth()
-  @UseGuards(OptionalCustomerJwtGuard)
   @ApiHeader({ name: 'X-Cart-Token', required: false })
   async addItem(
     @Req() req: Request,
@@ -61,8 +57,7 @@ export class CartsController {
   ) {
     const token = this.extractCartToken(req, xCartToken);
 
-
-    const customerId = (req.user as any)?.id ?? null;
+    const customerId = req.session.customerId ?? null
 
 
     const cart = await this.cartsService.getOrCreateCart(customerId, token);
@@ -80,7 +75,6 @@ export class CartsController {
   }
 
   @Patch('items/:id')
-  @UseGuards(OptionalCustomerJwtGuard)
   @ApiHeader({ name: 'X-Cart-Token', required: false })
   async updateItem(
     @Req() req: Request,
@@ -92,7 +86,7 @@ export class CartsController {
     const token = this.extractCartToken(req, xCartToken);
 
 
-    const customerId = (req.user as any)?.id ?? null;
+    const customerId = req.session.customerId ?? null
 
 
     const cart = await this.cartsService.getOrCreateCart(customerId, token);
@@ -110,7 +104,6 @@ export class CartsController {
   }
 
   @Delete('items/:id')
-  @UseGuards(OptionalCustomerJwtGuard)
   @ApiHeader({ name: 'X-Cart-Token', required: false })
   async removeItem(
     @Req() req: Request,
@@ -120,7 +113,7 @@ export class CartsController {
   ) {
     const token = this.extractCartToken(req, xCartToken);
 
-    const customerId = (req.user as any)?.id ?? null;
+    const customerId = req.session.customerId ?? null
 
     const cart = await this.cartsService.getOrCreateCart(customerId, token);
 
@@ -137,7 +130,6 @@ export class CartsController {
   }
 
   @Delete('clear')
-  @UseGuards(OptionalCustomerJwtGuard)
   @ApiHeader({ name: 'X-Cart-Token', required: false })
   async clear(
     @Req() req: Request,
@@ -146,7 +138,7 @@ export class CartsController {
   ) {
     const token = this.extractCartToken(req, xCartToken);
 
-    const customerId = (req.user as any)?.id ?? null;
+    const customerId = req.session.customerId ?? null
 
     const cart = await this.cartsService.getOrCreateCart(customerId, token);
 

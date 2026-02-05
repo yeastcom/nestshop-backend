@@ -7,6 +7,11 @@ import { ApiTags } from '@nestjs/swagger';
 export class CmsController {
   constructor(private readonly cmsService: CmsService) {}
 
+  @Get()
+  findAll() {
+    return this.cmsService.findAll();
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.cmsService.findOne(id);

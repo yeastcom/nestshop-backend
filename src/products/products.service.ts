@@ -36,6 +36,7 @@ export class ProductsService {
         name: dto.name,
         slug: dto.slug,
         description: dto.description ?? null,
+        shortDescription: dto.shortDescription ?? null,
         price: dto.price,
         sku: dto.sku ?? null,
         stockQty: dto.stockQty ?? 0,
@@ -94,9 +95,11 @@ export class ProductsService {
       manager.merge(Product, existing, {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.slug !== undefined ? { slug: dto.slug } : {}),
+        ...(dto.defaultCategoryId !== undefined ? { defaultCategoryId: dto.defaultCategoryId } : {}),
         ...(dto.description !== undefined
           ? { description: dto.description ?? null }
           : {}),
+        ...(dto.shortDescription !== undefined ? { shortDescription: dto.shortDescription } : {}),
         ...(dto.price !== undefined ? { price: dto.price } : {}),
         ...(dto.sku !== undefined ? { sku: dto.sku ?? null } : {}),
         ...(dto.stockQty !== undefined ? { stockQty: dto.stockQty ?? 0 } : {}),

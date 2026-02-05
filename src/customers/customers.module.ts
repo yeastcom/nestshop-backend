@@ -11,7 +11,7 @@ import { CustomerAddress } from './entities/customer-address.entity';
 import { CustomersService } from './customers.service';
 import { CustomersController } from './customers.controller';
 
-import { CustomerAuthController } from './customer-auth.controller';
+import { CustomersAuthController } from './customers-auth.controller';
 import { CustomerAuthService } from './customer-auth.service';
 import { CustomerJwtStrategy } from './customer-jwt.strategy';
 import { AdminCustomersController } from './admin-customer.controller';
@@ -37,7 +37,7 @@ import { AdminCustomersController } from './admin-customer.controller';
       },
     }),
   ],
-  controllers: [CustomersController, CustomerAuthController, AdminCustomersController],
+  controllers: [CustomersController, CustomersAuthController, AdminCustomersController],
   providers: [CustomersService, CustomerAuthService, CustomerJwtStrategy],
   exports: [CustomersService],
 })

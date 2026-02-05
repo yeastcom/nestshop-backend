@@ -12,6 +12,7 @@ import { AdminsModule } from './admins/admins.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'node:path';
 import { CmsModule } from './cms/cms.module';
+import { MenuModule } from './menu/menu.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { CmsModule } from './cms/cms.module';
     OrdersModule,
     AdminsModule,
     CmsModule,
+    MenuModule,
   ],
   controllers: [AppController],
   providers: [AppService],

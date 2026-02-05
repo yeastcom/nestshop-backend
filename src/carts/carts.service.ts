@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Cart } from './entities/cart.entity';
 import { CartItem } from './entities/cart-item.entity';
 import { Product } from '../products/entities/product.entity';
+import { productImageUrls } from 'src/products/product-image.urs';
 
 @Injectable()
 export class CartsService {
@@ -23,10 +24,10 @@ export class CartsService {
     if (customerId) {
       let cart = await this.cartsRepo.findOne({
         where: { customerId, status: 'active' },
-        relations: { items: true },
+        relations: { customer: {addresses: true}, items: {product: {images: true}}},
         order: { items: { id: 'ASC' } },
       });
-
+      console.log(cart)
       if (!cart) {
         cart = this.cartsRepo.create({
           customerId,
@@ -37,17 +38,17 @@ export class CartsService {
         cart = await this.cartsRepo.save(cart);
       }
 
-      return cart;
+      return this.attachImageUrlsToCart(cart)
     }
 
     // 2) guest cart
     if (token) {
       const cart = await this.cartsRepo.findOne({
         where: { token, status: 'active' },
-        relations: { items: true },
+        relations: { customer: true, items: {product: {images: true}}},
         order: { items: { id: 'ASC' } },
       });
-      if (cart) return cart;
+      if (cart) return this.attachImageUrlsToCart(cart)
     }
 
     // 3) create new guest cart
@@ -58,7 +59,8 @@ export class CartsService {
       items: [],
     });
     cart = await this.cartsRepo.save(cart);
-    return cart;
+
+    return this.attachImageUrlsToCart(cart)
   }
 
   async addItem(cart: Cart, productId: number, qty: number) {
@@ -68,9 +70,10 @@ export class CartsService {
     if (qty <=0 ) throw new ConflictException('Quantity must be > 0');
 
 
-    const currentQty = await this.getTotalQtyForProductInCart(cart.id, productId);
-    const nextQty = currentQty + qty;
+    const currentQty = Number(await this.getTotalQtyForProductInCart(cart.id, productId) ?? 0)
+    const nextQty = currentQty + Number(qty)
 
+    console.log(nextQty)
     if (nextQty > product.stockQty) {
       this.throwStockError(productId, nextQty, product.stockQty);
     }
@@ -81,12 +84,13 @@ export class CartsService {
     // jeśli item istnieje -> zwiększ qty
     const existing = await this.itemsRepo.findOne({
       where: { cartId: cart.id, productId },
+      relations: {product: true}
     });
 
     
 
     if (existing) {
-      existing.qty += qty;
+      existing.qty = nextQty;
       return this.itemsRepo.save(existing);
     }
 
@@ -145,4 +149,33 @@ export class CartsService {
       available,
     });
   }
+
+  private attachImageUrlsToCart(cart: any) {
+  const base = "/media"
+
+  for (const item of cart.items ?? []) {
+    const p = item.product
+    if (!p?.images) continue
+
+    p.images = p.images.map((img: any) => ({
+      ...img,
+      urls: {
+        original: `${base}/${this.pathByImageId(img.id)}/original.jpg`,
+        cart_default: `${base}/${this.pathByImageId(img.id)}/cart_default.jpg`,
+        small_default: `${base}/${this.pathByImageId(img.id)}/small_default.jpg`,
+        medium_default: `${base}/${this.pathByImageId(img.id)}/medium_default.jpg`,
+        home_default: `${base}/${this.pathByImageId(img.id)}/home_default.jpg`,
+        large_default: `${base}/${this.pathByImageId(img.id)}/large_default.jpg`,
+      },
+    }))
+  }
+
+  return cart
+}
+
+private pathByImageId(imageId: number) {
+  // twoja logika: np. "img/1/6/4" dla 164 itd.
+  const s = String(imageId)
+  return `img/p/${s.split("").join("/")}`
+}
 }
