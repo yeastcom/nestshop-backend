@@ -4,9 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
-import { ProductImage } from './entities/product-image.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { Category } from '../categories/entities/category.entity';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -18,8 +17,6 @@ export class ProductsService {
     private readonly dataSource: DataSource,
     @InjectRepository(Product)
     private readonly productsRepo: Repository<Product>,
-    @InjectRepository(ProductImage)
-    private readonly imagesRepo: Repository<ProductImage>,
     @InjectRepository(Category)
     private readonly categoriesRepo: Repository<Category>,
   ) {}
@@ -132,7 +129,7 @@ export class ProductsService {
 
     // pobierz kategorie, upewnij się że wszystkie istnieją
     const uniqueIds = [...new Set(categoryIds)];
-    const categories = await this.categoriesRepo.findByIds(uniqueIds as any); // w TypeORM 0.3 bywa findBy({id: In(...)})
+    const categories = await this.categoriesRepo.find({ where: { id: In(uniqueIds) } });
     if (categories.length !== uniqueIds.length) {
       throw new BadRequestException('One or more categories not found');
     }

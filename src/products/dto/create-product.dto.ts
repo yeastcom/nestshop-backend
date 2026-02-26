@@ -5,6 +5,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -45,6 +46,7 @@ export class CreateProductDto {
 
   @ApiProperty({ example: '99.99', description: 'Cena jako string (decimal)' })
   @IsString()
+  @Matches(/^\d+(\.\d{1,2})?$/, { message: 'price must be a valid decimal number (e.g. 99.99)' })
   price: string;
 
   @ApiPropertyOptional({ example: 'TSHIRT-001' })

@@ -9,7 +9,6 @@ import { Category } from './entities/category.entity';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { Product } from 'src/products/entities/product.entity';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class CategoriesService {
@@ -17,7 +16,6 @@ export class CategoriesService {
     @InjectRepository(Category)
     private readonly categoriesRepo: Repository<Category>,
     @InjectRepository(Product) private readonly productsRepo: Repository<Product>,
-    private config: ConfigService
   ) {}
 
   async create(dto: CreateCategoryDto): Promise<Category> {
@@ -128,7 +126,8 @@ export class CategoriesService {
 
 
   async getProductsByCategory(categoryId: number, opts: { page: number; limit: number }) {
-    const { page, limit } = opts
+    const page = Math.max(1, opts.page)
+    const limit = Math.min(100, Math.max(1, opts.limit))
     const skip = (page - 1) * limit
 
     const category = await this.categoriesRepo.findOne({ where: { id: categoryId } })

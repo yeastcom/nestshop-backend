@@ -5,7 +5,7 @@ import {
   ConflictException
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
@@ -21,18 +21,15 @@ import { CustomerAddress } from 'src/customers/entities/customer-address.entity'
 @Injectable()
 export class OrdersService {
   constructor(
+    private readonly dataSource: DataSource,
+
     @InjectRepository(Order)
     private readonly ordersRepo: Repository<Order>,
-    @InjectRepository(OrderItem)
-    private readonly orderItemsRepo: Repository<OrderItem>,
 
     @InjectRepository(Cart)
     private readonly cartsRepo: Repository<Cart>,
     @InjectRepository(CartItem)
     private readonly cartItemsRepo: Repository<CartItem>,
-
-    @InjectRepository(Product)
-    private readonly productsRepo: Repository<Product>,
 
     @InjectRepository(CustomerAddress)
     private readonly addressesRepo: Repository<CustomerAddress>,
@@ -72,7 +69,7 @@ export class OrdersService {
   }
 
   async createFromCart(customerId: number, dto: CreateOrderDto) {
-    // 1) cart + items
+    // Walidacje przed transakcją (nie modyfikują danych)
     const cart = await this.getActiveCustomerCart(customerId);
 
     const cartItems = await this.cartItemsRepo.find({
@@ -80,12 +77,23 @@ export class OrdersService {
     });
     if (cartItems.length === 0) throw new BadRequestException('Cart is empty');
 
-    for (const item of cartItems) {
-        const product = await this.productsRepo
-          .createQueryBuilder('p')
-          .where('p.id = :id', { id: item.productId })
-          .getOne();
+    const delivery = await this.addressesRepo.findOne({
+      where: { id: dto.deliveryAddressId, customerId },
+    });
+    if (!delivery) throw new BadRequestException('Delivery address not found');
 
+    let invoice: CustomerAddress | null = null;
+    if (dto.invoiceAddressId) {
+      invoice = await this.addressesRepo.findOne({
+        where: { id: dto.invoiceAddressId, customerId },
+      });
+      if (!invoice) throw new BadRequestException('Invoice address not found');
+    }
+
+    const savedOrderId = await this.dataSource.transaction(async (manager) => {
+      // 1) Sprawdź stock i zmniejsz go atomowo
+      for (const item of cartItems) {
+        const product = await manager.findOne(Product, { where: { id: item.productId } });
         if (!product) throw new NotFoundException(`Product ${item.productId} not found`);
 
         if (item.qty > product.stockQty) {
@@ -97,86 +105,60 @@ export class OrdersService {
           });
         }
 
-        product.stockQty -= item.qty;
-        await this.productsRepo.save(product);
+        await manager.decrement(Product, { id: product.id }, 'stockQty', item.qty);
       }
 
-    // 2) adresy po ID + ownership
-    const delivery = await this.addressesRepo.findOne({
-      where: { id: dto.deliveryAddressId, customerId } as any,
-    });
-    if (!delivery) throw new BadRequestException('Delivery address not found');
+      // 2) Snapshoty adresów
+      const deliverySnapshot = this.addressToSnapshot(delivery);
+      const invoiceSnapshot = invoice ? this.addressToSnapshot(invoice) : null;
 
-    let invoice: CustomerAddress | null = null;
-    if (dto.invoiceAddressId) {
-      invoice = await this.addressesRepo.findOne({
-        where: { id: dto.invoiceAddressId, customerId } as any,
+      // 3) Pobierz produkty do snapshotu name/sku
+      const productIds = [...new Set(cartItems.map((i) => i.productId))];
+      const products = await manager.find(Product, { where: { id: In(productIds) } });
+      const byId = new Map(products.map((p) => [p.id, p]));
+
+      // 4) Utwórz zamówienie
+      const order = manager.create(Order, {
+        customerId,
+        orderNumber: `ORD-${Date.now()}`,
+        statusCode: 'new',
+        currency: 'PLN',
+        deliveryAddress: deliverySnapshot,
+        invoiceAddress: invoiceSnapshot,
+        itemsTotal: '0.00',
+        total: '0.00',
+        items: [],
       });
-      if (!invoice) throw new BadRequestException('Invoice address not found');
-    }
+      const savedOrder = await manager.save(Order, order);
 
-    const deliverySnapshot = this.addressToSnapshot(delivery);
-    const invoiceSnapshot = invoice ? this.addressToSnapshot(invoice) : null;
+      // 5) Utwórz pozycje zamówienia
+      const orderItems = cartItems.map((ci) => {
+        const p = byId.get(ci.productId);
+        if (!p) throw new NotFoundException(`Product ${ci.productId} not found`);
 
-    // 3) produkty do snapshotu name/sku
-    const productIds = [...new Set(cartItems.map((i) => i.productId))];
-    const products = await this.productsRepo.find({
-      where: { id: In(productIds) },
-    });
-    const byId = new Map(products.map((p) => [p.id, p]));
-
-    // 4) orderNumber (MVP)
-    const orderNumber = `ORD-${Date.now()}`;
-
-    // 5) create order (bez items na razie)
-    const order = this.ordersRepo.create({
-      customerId,
-      orderNumber,
-      statusCode: 'new',
-      currency: 'PLN',
-      deliveryAddress: deliverySnapshot,
-      invoiceAddress: invoiceSnapshot,
-      itemsTotal: '0.00',
-      total: '0.00',
-      items: [],
-    });
-
-    const savedOrder = await this.ordersRepo.save(order);
-
-    // 6) create order items
-    const orderItems = cartItems.map((ci) => {
-      const p = byId.get(ci.productId);
-      if (!p) throw new NotFoundException(`Product ${ci.productId} not found`);
-
-      const lineTotal = this.moneyMul(ci.unitPrice, ci.qty);
-
-      return this.orderItemsRepo.create({
-        orderId: savedOrder.id,
-        productId: ci.productId,
-        name: (p as any).name ?? `Product#${p.id}`,
-        sku: (p as any).sku ?? null,
-        qty: ci.qty,
-        unitPrice: ci.unitPrice,
-        lineTotal,
+        return manager.create(OrderItem, {
+          orderId: savedOrder.id,
+          productId: ci.productId,
+          name: p.name,
+          sku: p.sku ?? null,
+          qty: ci.qty,
+          unitPrice: ci.unitPrice,
+          lineTotal: this.moneyMul(ci.unitPrice, ci.qty),
+        });
       });
+      await manager.save(OrderItem, orderItems);
+
+      // 6) Zaktualizuj totale
+      const itemsTotal = this.moneyAdd(orderItems.map((i) => i.lineTotal));
+      await manager.update(Order, savedOrder.id, { itemsTotal, total: itemsTotal });
+
+      // 7) Zamknij koszyk
+      await manager.update(Cart, cart.id, { status: 'converted' });
+
+      return savedOrder.id;
     });
 
-    await this.orderItemsRepo.save(orderItems);
-
-    // 7) totals (MVP: total = itemsTotal)
-    const itemsTotal = this.moneyAdd(orderItems.map((i) => i.lineTotal));
-
-    await this.ordersRepo.update(savedOrder.id, {
-      itemsTotal,
-      total: itemsTotal,
-    });
-
-    // 8) zamknij koszyk
-    cart.status = 'converted';
-    await this.cartsRepo.save(cart);
-
-    // 9) zwróć order + items
-    return this.findOneForCustomer(customerId, savedOrder.id);
+    return this.findOneForCustomer(customerId, savedOrderId);
   }
 
   async findAllForCustomer(customerId: number) {

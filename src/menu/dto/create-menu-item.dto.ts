@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger"
-import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, IsUrl, Min } from 'class-validator';
 
 export class CreateMenuItemDto {
   @ApiProperty()
@@ -7,7 +7,7 @@ export class CreateMenuItemDto {
   name: string
 
   @ApiProperty()
-  @IsString()
+  @IsUrl({}, { message: 'url must be a valid URL' })
   url: string
 
   @ApiPropertyOptional({ example: null })
@@ -17,7 +17,8 @@ export class CreateMenuItemDto {
   parentId: number | null
 
   @ApiProperty()
-  @IsString()
+  @IsInt()
+  @Min(0)
   position: number
 
   @ApiProperty()

@@ -27,7 +27,6 @@ export class CartsService {
         relations: { customer: {addresses: true}, items: {product: {images: true}}},
         order: { items: { id: 'ASC' } },
       });
-      console.log(cart)
       if (!cart) {
         cart = this.cartsRepo.create({
           customerId,
@@ -67,13 +66,10 @@ export class CartsService {
     const product = await this.productsRepo.findOne({ where: { id: productId } });
     if (!product) throw new NotFoundException('Product not found');
 
-    if (qty <=0 ) throw new ConflictException('Quantity must be > 0');
+    if (qty <= 0) throw new ConflictException('Quantity must be > 0');
 
-
-    const currentQty = Number(await this.getTotalQtyForProductInCart(cart.id, productId) ?? 0)
-    const nextQty = currentQty + Number(qty)
-
-    console.log(nextQty)
+    const currentQty = Number(await this.getTotalQtyForProductInCart(cart.id, productId) ?? 0);
+    const nextQty = currentQty + qty;
     if (nextQty > product.stockQty) {
       this.throwStockError(productId, nextQty, product.stockQty);
     }

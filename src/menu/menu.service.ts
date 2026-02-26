@@ -78,7 +78,7 @@ export class MenuService {
    async remove(id: number): Promise<void> {
     const res = await this.menuRepo.delete(id);
 
-    if (!res.affected) throw new NotFoundException('Cms not found');
+    if (!res.affected) throw new NotFoundException('Menu item not found');
   }
 
   async findRootItems() {
@@ -93,7 +93,7 @@ export class MenuService {
       where: { id },
       relations: { children: true },
     });
-    if (!menu) throw new NotFoundException('Category not found');
+    if (!menu) throw new NotFoundException('Menu item not found');
     return menu;
   }
 }
