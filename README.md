@@ -1,98 +1,248 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NestShop — Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+REST API dla platformy e-commerce NestShop. Zbudowane na [NestJS](https://nestjs.com/) z MySQL, Redis i TypeORM.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Technologie
 
-## Description
+| Warstwa | Technologia |
+|---|---|
+| Framework | NestJS 11 |
+| Baza danych | MySQL 8 + TypeORM 0.3 |
+| Sesje | express-session + Redis |
+| Autentykacja | Session-based (admin + customer) + Passport JWT |
+| Upload obrazów | Multer + Sharp (auto-resize do 5 rozmiarów) |
+| Walidacja | class-validator + class-transformer |
+| Dokumentacja | Swagger / OpenAPI (`/api/docs`) |
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Wymagania
 
-## Project setup
+- Node.js 20+
+- MySQL 8
+- Redis 7
+
+## Uruchomienie lokalnie
+
+### 1. Instalacja zależności
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+### 2. Zmienne środowiskowe
+
+Skopiuj plik `.env` i uzupełnij wartości:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp .env .env.local
 ```
 
-## Run tests
+| Zmienna | Opis | Przykład |
+|---|---|---|
+| `NODE_ENV` | Środowisko | `development` |
+| `PORT` | Port serwera | `3000` |
+| `DB_HOST` | Host MySQL | `127.0.0.1` |
+| `DB_PORT` | Port MySQL | `3306` |
+| `DB_USER` | Użytkownik bazy | `app` |
+| `DB_PASS` | Hasło bazy | `app` |
+| `DB_NAME` | Nazwa bazy | `app` |
+| `JWT_SECRET` | Sekret JWT (customer) | *(losowy, min. 32 znaki)* |
+| `JWT_EXPIRES_IN` | Ważność tokena | `7d` |
+| `ADMIN_JWT_SECRET` | Sekret JWT (admin) | *(losowy, min. 32 znaki)* |
+| `ADMIN_JWT_EXPIRES_IN` | Ważność tokena admina | `7d` |
+| `SESSION_SECRET` | Sekret sesji | *(losowy, min. 32 znaki)* |
+| `REDIS_URL` | URL Redis | `redis://127.0.0.1:6379` |
+| `ADMIN_SEED_EMAIL` | Email pierwszego admina | `admin@example.com` |
+| `ADMIN_SEED_PASSWORD` | Hasło pierwszego admina | `Admin123!` |
+| `ADMIN_PANEL_ORIGIN` | Origin frontendu (CORS) | `http://localhost:3001` |
+
+> **Uwaga:** W produkcji ustaw wszystkie sekrety na losowo wygenerowane wartości i nigdy nie commituj pliku `.env` do repozytorium.
+
+### 3. Migracje bazy danych
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run migration:run
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 4. Seed (pierwszy admin)
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run build
+npm run seed
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 5. Start serwera
 
-## Resources
+```bash
+# Tryb developerski (hot-reload)
+npm run start:dev
 
-Check out a few resources that may come in handy when working with NestJS:
+# Produkcja
+npm run build
+npm run start:prod
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Serwer dostępny pod: `http://localhost:3000`
+Swagger UI: `http://localhost:3000/api/docs`
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Struktura projektu
 
-## Stay in touch
+```
+src/
+├── admins/          # Autentykacja adminów (session + JWT)
+├── carts/           # Koszyk (dla gości i zalogowanych)
+├── categories/      # Kategorie produktów (drzewo hierarchiczne)
+├── cms/             # Strony statyczne (CMS)
+├── customers/       # Klienci, rejestracja, adresy
+├── menu/            # Menu nawigacyjne (max 2 poziomy)
+├── orders/          # Zamówienia i statusy
+├── products/        # Produkty + upload i resize obrazów
+├── migrations/      # Migracje TypeORM
+├── seeds/           # Seedy bazy danych
+├── app.module.ts
+└── main.ts
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## Endpointy API
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Pełna interaktywna dokumentacja dostępna w Swagger UI pod `/api/docs`.
+
+### Autentykacja
+
+| Metoda | Ścieżka | Opis | Auth |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | Rejestracja klienta | — |
+| `POST` | `/api/auth/login` | Logowanie klienta | — |
+| `POST` | `/api/auth/logout` | Wylogowanie klienta | customer |
+| `GET` | `/api/auth/me` | Dane zalogowanego klienta | customer |
+| `POST` | `/api/admin/auth/login` | Logowanie admina | — |
+| `POST` | `/api/admin/auth/logout` | Wylogowanie admina | admin |
+| `GET` | `/api/admin/auth/me` | Dane zalogowanego admina | admin |
+
+### Produkty
+
+| Metoda | Ścieżka | Opis | Auth |
+|---|---|---|---|
+| `GET` | `/api/products` | Lista produktów | — |
+| `GET` | `/api/products/:id` | Szczegóły produktu | — |
+| `POST` | `/api/admin/products` | Utwórz produkt | admin |
+| `GET` | `/api/admin/products` | Lista produktów (admin) | admin |
+| `PUT` | `/api/admin/products/:id` | Zaktualizuj produkt | admin |
+| `DELETE` | `/api/admin/products/:id` | Usuń produkt | admin |
+| `POST` | `/api/admin/products/:id/images` | Upload zdjęcia | admin |
+| `PATCH` | `/api/admin/products/:id/images/:imageId/cover` | Ustaw cover | admin |
+| `DELETE` | `/api/admin/products/:id/images/:imageId` | Usuń zdjęcie | admin |
+| `POST` | `/api/admin/products/:id/categories` | Przypisz kategorie | admin |
+
+### Kategorie
+
+| Metoda | Ścieżka | Opis | Auth |
+|---|---|---|---|
+| `GET` | `/api/categories` | Lista kategorii | — |
+| `GET` | `/api/categories/tree` | Drzewo kategorii | — |
+| `GET` | `/api/categories/:id` | Szczegóły kategorii | — |
+| `GET` | `/api/categories/:id/products` | Produkty w kategorii (`?page&limit`) | — |
+| `POST` | `/api/admin/categories` | Utwórz kategorię | admin |
+| `GET` | `/api/admin/categories/all` | Wszystkie kategorie | admin |
+| `GET` | `/api/admin/categories/tree` | Drzewo kategorii | admin |
+| `PUT` | `/api/admin/categories/:id` | Zaktualizuj kategorię | admin |
+| `DELETE` | `/api/admin/categories/:id` | Usuń kategorię | admin |
+
+### Koszyk
+
+| Metoda | Ścieżka | Opis | Auth |
+|---|---|---|---|
+| `GET` | `/api/cart` | Pobierz / utwórz koszyk | — |
+| `POST` | `/api/cart/items` | Dodaj produkt do koszyka | — |
+| `PATCH` | `/api/cart/items/:id` | Zmień ilość | — |
+| `DELETE` | `/api/cart/items/:id` | Usuń pozycję | — |
+| `DELETE` | `/api/cart/clear` | Wyczyść koszyk | — |
+
+### Zamówienia
+
+| Metoda | Ścieżka | Opis | Auth |
+|---|---|---|---|
+| `POST` | `/api/orders` | Utwórz zamówienie z koszyka | customer |
+| `GET` | `/api/orders` | Lista zamówień klienta | customer |
+| `GET` | `/api/orders/:id` | Szczegóły zamówienia | customer |
+| `GET` | `/api/admin/orders` | Wszystkie zamówienia | admin |
+| `GET` | `/api/admin/orders/:id` | Szczegóły zamówienia | admin |
+| `PATCH` | `/api/admin/orders/:id/status` | Zmień status | admin |
+| `GET` | `/api/admin/orders/:id/status-history` | Historia statusów | admin |
+
+### Klienci (Admin)
+
+| Metoda | Ścieżka | Opis | Auth |
+|---|---|---|---|
+| `GET` | `/api/admin/customers` | Lista klientów | admin |
+| `GET` | `/api/admin/customers/addresses` | Wszystkie adresy | admin |
+
+### CMS
+
+| Metoda | Ścieżka | Opis | Auth |
+|---|---|---|---|
+| `GET` | `/api/cms` | Lista stron | — |
+| `GET` | `/api/cms/:id` | Szczegóły strony | — |
+| `POST` | `/api/admin/cms` | Utwórz stronę | admin |
+| `PUT` | `/api/admin/cms/:id` | Zaktualizuj stronę | admin |
+| `DELETE` | `/api/admin/cms/:id` | Usuń stronę | admin |
+
+### Menu
+
+| Metoda | Ścieżka | Opis | Auth |
+|---|---|---|---|
+| `GET` | `/api/menu` | Menu publiczne | — |
+| `POST` | `/api/admin/menu` | Utwórz element menu | admin |
+| `PUT` | `/api/admin/menu/:id` | Zaktualizuj element | admin |
+| `DELETE` | `/api/admin/menu/:id` | Usuń element | admin |
+
+---
+
+## Zdjęcia produktów
+
+Po wgraniu, zdjęcia są automatycznie konwertowane do JPEG i zapisywane w 5 rozmiarach:
+
+| Wariant | Rozmiar |
+|---|---|
+| `original` | Oryginał |
+| `cart_default` | 125×125 px |
+| `small_default` | 98×98 px |
+| `medium_default` | 452×452 px |
+| `home_default` | 250×250 px |
+| `large_default` | 800×800 px |
+
+Pliki serwowane pod: `/media/img/p/{id}/{wariant}.jpg`
+
+---
+
+## Migracje
+
+```bash
+# Uruchom wszystkie migracje
+npm run migration:run
+
+# Wygeneruj nową migrację (po zmianie encji)
+npm run migration:generate
+
+# Cofnij ostatnią migrację
+npm run migration:revert
+```
+
+---
+
+## Skrypty
+
+```bash
+npm run start:dev        # Tryb developerski (hot-reload)
+npm run build            # Build produkcyjny
+npm run start:prod       # Uruchom build produkcyjny
+npm run lint             # Linting (ESLint)
+npm run format           # Formatowanie (Prettier)
+npm run test             # Testy jednostkowe
+npm run test:e2e         # Testy E2E
+npm run migration:run    # Uruchom migracje
+npm run seed             # Wypełnij bazę danymi startowymi
+```
