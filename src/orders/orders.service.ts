@@ -17,6 +17,7 @@ import { CartItem } from '../carts/entities/cart-item.entity';
 import { Product } from '../products/entities/product.entity';
 
 import { CustomerAddress } from 'src/customers/entities/customer-address.entity';
+import { PaymentMethod } from '../payment-methods/entities/payment-method.entity';
 
 @Injectable()
 export class OrdersService {
@@ -31,8 +32,8 @@ export class OrdersService {
     @InjectRepository(CartItem)
     private readonly cartItemsRepo: Repository<CartItem>,
 
-    @InjectRepository(CustomerAddress)
-    private readonly addressesRepo: Repository<CustomerAddress>,
+    @InjectRepository(PaymentMethod)
+    private readonly paymentMethodsRepo: Repository<PaymentMethod>,
   ) {}
 
   // --- helpers do kasy (na start “cents”, żeby uniknąć floatów) ---
@@ -49,20 +50,20 @@ export class OrdersService {
   private addressToSnapshot(a: CustomerAddress): Record<string, any> {
     // Dopasuj pola pod swoją encję Address (poniżej “sensowny default”)
     return {
-      fullName: (a as any).fullName ?? null,
-      company: (a as any).company ?? null,
-      phone: (a as any).phone ?? null,
-      line1: (a as any).line1 ?? (a as any).address1 ?? null,
-      line2: (a as any).line2 ?? (a as any).address2 ?? null,
-      city: (a as any).city ?? null,
-      postalCode: (a as any).postalCode ?? (a as any).zip ?? null,
-      countryCode: (a as any).countryCode ?? (a as any).country ?? null,
+      fullName: a.customer ? (a.customer.firstName + " " + a.customer.lastName) : null,
+      company: a.company ?? null,
+      phone: a.phone ?? null,
+      street: a.street ?? null,
+      city: a.city ?? null,
+      postalCode: a.postalCode ?? null,
+      countryCode: a.countryCode ?? null
     };
   }
 
   private async getActiveCustomerCart(customerId: number): Promise<Cart> {
     const cart = await this.cartsRepo.findOne({
       where: { customerId, status: 'active' },
+      relations: { deliveryAddress: true, invoiceAddress: true, deliveryMethod: true },
     });
     if (!cart) throw new BadRequestException('Cart not found');
     return cart;
@@ -77,18 +78,18 @@ export class OrdersService {
     });
     if (cartItems.length === 0) throw new BadRequestException('Cart is empty');
 
-    const delivery = await this.addressesRepo.findOne({
-      where: { id: dto.deliveryAddressId, customerId },
-    });
-    if (!delivery) throw new BadRequestException('Delivery address not found');
+    const delivery = cart.deliveryAddress;
+    if (!delivery) throw new BadRequestException('Delivery address not set in cart');
 
-    let invoice: CustomerAddress | null = null;
-    if (dto.invoiceAddressId) {
-      invoice = await this.addressesRepo.findOne({
-        where: { id: dto.invoiceAddressId, customerId },
-      });
-      if (!invoice) throw new BadRequestException('Invoice address not found');
-    }
+    const invoice: CustomerAddress | null = cart.invoiceAddress ?? null;
+
+    const deliveryMethod = cart.deliveryMethod;
+    if (!deliveryMethod) throw new BadRequestException('Delivery method not set in cart');
+
+    const paymentMethod = await this.paymentMethodsRepo.findOne({
+      where: { id: dto.paymentMethodId, isActive: true },
+    });
+    if (!paymentMethod) throw new BadRequestException('Payment method not found');
 
     const savedOrderId = await this.dataSource.transaction(async (manager) => {
       // 1) Sprawdź stock i zmniejsz go atomowo
@@ -123,9 +124,12 @@ export class OrdersService {
         orderNumber: `ORD-${Date.now()}`,
         statusCode: 'new',
         currency: 'PLN',
+        paymentMethodId: paymentMethod.id,
+        deliveryMethodId: deliveryMethod.id,
         deliveryAddress: deliverySnapshot,
         invoiceAddress: invoiceSnapshot,
         itemsTotal: '0.00',
+        shippingTotal: '0.00',
         total: '0.00',
         items: [],
       });
@@ -150,7 +154,9 @@ export class OrdersService {
 
       // 6) Zaktualizuj totale
       const itemsTotal = this.moneyAdd(orderItems.map((i) => i.lineTotal));
-      await manager.update(Order, savedOrder.id, { itemsTotal, total: itemsTotal });
+      const shippingTotal = Number(deliveryMethod.price).toFixed(2);
+      const total = this.moneyAdd([itemsTotal, shippingTotal]);
+      await manager.update(Order, savedOrder.id, { itemsTotal, shippingTotal, total });
 
       // 7) Zamknij koszyk
       await manager.update(Cart, cart.id, { status: 'converted' });
@@ -177,7 +183,7 @@ export class OrdersService {
   async findOneForCustomer(customerId: number, orderId: number) {
     const order = await this.ordersRepo.findOne({
       where: { id: orderId, customerId },
-      relations: { items: true },
+      relations: { items: true, paymentMethod: true, deliveryMethod: true },
       order: { items: { id: 'ASC' } },
     });
     if (!order) throw new NotFoundException('Order not found');

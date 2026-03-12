@@ -14,21 +14,24 @@ export class OrdersController {
   @Post()
   @ApiBearerAuth()
   create(@Req() req: Request, @Body() dto: CreateOrderDto) {
-    const customerId = (req.user as any).id;
+    const customerId = req.session.customerId as number;
+
     return this.ordersService.createFromCart(customerId, dto);
   }
 
   @Get()
   @ApiBearerAuth()
   findAll(@Req() req: Request) {
-    const customerId = (req.user as any).id;
+    const customerId = req.session.customerId as number;
+    
     return this.ordersService.findAllForCustomer(customerId);
   }
 
   @Get(':id')
   @ApiBearerAuth()
   findOne(@Req() req: Request, @Param('id') id: string) {
-    const customerId = (req.user as any).id;
+    const customerId = req.session.customerId as number;
+
     return this.ordersService.findOneForCustomer(customerId, Number(id));
   }
 }

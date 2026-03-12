@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Cart } from './entities/cart.entity';
 import { CartItem } from './entities/cart-item.entity';
 import { Product } from '../products/entities/product.entity';
@@ -22,9 +22,20 @@ export class CartsService {
   async getOrCreateCart(customerId: number | null, token: string | null) {
     // 1) customer cart
     if (customerId) {
+      // jeśli jest token gościa, przypisz jego koszyk do klienta (zamiast tworzyć nowy)
+      if (token) {
+        const guestCart = await this.cartsRepo.findOne({
+          where: { token, status: 'active', customerId: IsNull() },
+        });
+        if (guestCart) {
+          guestCart.customerId = customerId;
+          await this.cartsRepo.save(guestCart);
+        }
+      }
+
       let cart = await this.cartsRepo.findOne({
         where: { customerId, status: 'active' },
-        relations: { customer: {addresses: true}, items: {product: {images: true}}},
+        relations: { customer: {addresses: true}, items: {product: {images: true}}, deliveryAddress: true, invoiceAddress: true, deliveryMethod: true },
         order: { items: { id: 'ASC' } },
       });
       if (!cart) {
@@ -143,6 +154,30 @@ export class CartsService {
       productId,
       requested,
       available,
+    });
+  }
+
+  async setAddresses(
+    cart: Cart,
+    deliveryAddressId?: number | null,
+    invoiceAddressId?: number | null,
+    deliveryMethodId?: number | null,
+  ) {
+    const update: Record<string, any> = {};
+    if (deliveryAddressId !== undefined) {
+      update.deliveryAddress = deliveryAddressId ? { id: deliveryAddressId } : null;
+    }
+    if (invoiceAddressId !== undefined) {
+      update.invoiceAddress = invoiceAddressId ? { id: invoiceAddressId } : null;
+    }
+    if (deliveryMethodId !== undefined) {
+      update.deliveryMethod = deliveryMethodId ? { id: deliveryMethodId } : null;
+    }
+    await this.cartsRepo.update(cart.id, update);
+    return this.cartsRepo.findOne({
+      where: { id: cart.id },
+      relations: { customer: { addresses: true }, items: { product: { images: true } }, deliveryAddress: true, invoiceAddress: true, deliveryMethod: true },
+      order: { items: { id: 'ASC' } },
     });
   }
 

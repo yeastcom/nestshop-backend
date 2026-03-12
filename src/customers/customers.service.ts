@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 import { DataSource, Repository } from 'typeorm';
 import { Customer } from './entities/customer.entity';
 import { CustomerAddress } from './entities/customer-address.entity';
@@ -21,7 +22,8 @@ export class CustomersService {
     const exists = await this.customersRepo.findOne({ where: { email: dto.email } });
     if (exists) throw new BadRequestException('Email already exists');
 
-    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const isGuest = !dto.password;
+    const passwordHash = isGuest ? randomUUID() : await bcrypt.hash(dto.password!, 12);
 
     const customer = this.customersRepo.create({
       email: dto.email,
@@ -29,6 +31,7 @@ export class CustomersService {
       firstName: dto.firstName,
       lastName: dto.lastName,
       isActive: dto.isActive ?? true,
+      isGuest: dto.isGuest ?? isGuest,
     });
 
     const saved = await this.customersRepo.save(customer);
@@ -100,6 +103,7 @@ export class CustomersService {
     if (dto.firstName !== undefined) customer.firstName = dto.firstName;
     if (dto.lastName !== undefined) customer.lastName = dto.lastName;
     if (dto.isActive !== undefined) customer.isActive = dto.isActive;
+    if (dto.isGuest !== undefined) customer.isGuest = dto.isGuest;
 
     const saved = await this.customersRepo.save(customer);
     const { passwordHash, ...safe } = saved as any;
@@ -199,6 +203,8 @@ export class CustomersService {
   async validateLogin(email: string, password: string) {
     const customer = await this.customersRepo.findOne({ where: { email } })
     if (!customer) throw new UnauthorizedException("Invalid credentials")
+
+    if (!customer.isActive) throw new UnauthorizedException("Account not active")
 
     const ok = await bcrypt.compare(password, customer.passwordHash)
     if (!ok) throw new UnauthorizedException("Invalid credentials")

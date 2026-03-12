@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import { CartsService } from './carts.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+import { UpdateCartAddressesDto } from './dto/update-cart-addresses.dto';
 import { UseGuards } from '@nestjs/common';
 
 @ApiTags('cart')
@@ -44,6 +45,23 @@ export class CartsController {
     }
 
     return cart;
+  }
+
+  @Patch()
+  async setAddresses(
+    @Req() req: Request,
+    @Headers('x-cart-token') xCartToken: string | undefined,
+    @Body() dto: UpdateCartAddressesDto,
+  ) {
+    const token = this.extractCartToken(req, xCartToken);
+    const customerId = req.session.customerId ?? null;
+    const cart = await this.cartsService.getOrCreateCart(customerId, token);
+    return this.cartsService.setAddresses(
+      cart,
+      dto.deliveryAddressId,
+      dto.invoiceAddressId,
+      dto.deliveryMethodId,
+    );
   }
 
   @Post('items')

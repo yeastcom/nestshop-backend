@@ -12,6 +12,7 @@ import {
 import { CartItem } from './cart-item.entity';
 import { Customer } from 'src/customers/entities/customer.entity';
 import { CustomerAddress } from 'src/customers/entities/customer-address.entity';
+import { DeliveryMethod } from 'src/delivery-methods/entities/delivery-method.entity';
 
 @Entity('carts')
 export class Cart {
@@ -41,6 +42,10 @@ export class Cart {
   @ManyToOne(() => CustomerAddress, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "invoiceAddressId" })
   invoiceAddress?: CustomerAddress;
+
+  @ManyToOne(() => DeliveryMethod, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "deliveryMethodId" })
+  deliveryMethod?: DeliveryMethod;
 
   @CreateDateColumn()
   createdAt: Date;

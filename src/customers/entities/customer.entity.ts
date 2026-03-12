@@ -31,6 +31,9 @@ export class Customer {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  isGuest: boolean;
+
   @OneToMany(() => CustomerAddress, (a) => a.customer, { cascade: true })
   addresses: CustomerAddress[];
 
